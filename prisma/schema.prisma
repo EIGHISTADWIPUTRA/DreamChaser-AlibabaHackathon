@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Classroom {
+  id        Int      @id @default(autoincrement())
+  name      String
+  classCode String   @unique @map("class_code")
+  teacherId Int      @map("teacher_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  teacher   User     @relation("TeacherClassrooms", fields: [teacherId], references: [id])
+  students  User[]   @relation("StudentClassroom")
+
+  @@map("classrooms")
+}
+
+model User {
+  id          Int         @id @default(autoincrement())
+  username    String      @unique
+  password    String
+  role        String      @default("STUDENT")
+  classroomId Int?        @map("classroom_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  stories     Story[]
+  classroom   Classroom?  @relation("StudentClassroom", fields: [classroomId], references: [id])
+  classrooms  Classroom[] @relation("TeacherClassrooms")
+
+  @@map("users")
+}
+
+model Story {
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @map("user_id")
+  title               String    @default("")
+  status              String    @default("drafting")
+  artStyle            String    @default("<3d cartoon>") @map("art_style")
+  teacherGrade        Int?      @map("teacher_grade")
+  teacherFeedback     String?   @map("teacher_feedback")
+  aiGradingSuggestion String?   @map("ai_grading_suggestion")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  user                User      @relation(fields: [userId], references: [id])
+  sections            Section[]
+
+  @@map("stories")
+}
+
+model Section {
+  id               Int      @id @default(autoincrement())
+  storyId          Int      @map("story_id")
+  sectionType      String   @map("section_type")
+  textContent      String   @default("") @map("text_content")
+  isLocked         Boolean  @default(false) @map("is_locked")
+  imagePromptBrief String?  @map("image_prompt_brief")
+  imageUrl         String?  @map("image_url")
+  videoUrl         String?  @map("video_url")
+  audioUrl         String?  @map("audio_url")
+  isIllustrated    Boolean  @default(false) @map("is_illustrated")
+  sortOrder        Int      @map("sort_order")
+  story            Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, sectionType])
+  @@map("sections")
+}
