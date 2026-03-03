@@ -107,7 +107,7 @@ export default function LoginPage() {
                 </div>
 
                 <p className="text-center text-xs text-slate-400 mt-6">
-                    AI Narrative Text Learning Platform
+                    Nusara
                 </p>
             </div>
         </div>

@@ -3,8 +3,8 @@ import { SessionProvider } from "@/hooks/useSession";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "AI Narrative Text Learning Platform",
-    description: "Learn to write English Narrative Text with AI-powered guidance",
+    title: "Nusara",
+    description: "Nusara — Learn to write English Narrative Text with AI-powered guidance",
 };
 
 export default function RootLayout({

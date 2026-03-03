@@ -10,7 +10,7 @@ export default function LandingPage() {
             <nav className="sticky top-0 z-50 backdrop-blur-md bg-[#FFFBF5]/80 border-b border-orange-100/50">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="font-serif text-2xl font-bold tracking-tight text-stone-800">
-                        NarrativeAI
+                        Nusara
                     </div>
                     <div className="flex items-center gap-4">
                         <Link href="/library">
@@ -144,7 +144,7 @@ export default function LandingPage() {
             {/* ═══════════════ FOOTER ═══════════════ */}
             <footer className="py-12 bg-white border-t border-orange-100 text-center px-6">
                 <p className="text-sm text-stone-600 font-medium">
-                    Built thoughtfully for English Teachers &amp; Students
+                    Nusara &mdash; Built thoughtfully for English Teachers &amp; Students
                 </p>
                 <p className="text-sm text-stone-600 mt-2">
                     Powered by Alibaba Cloud DashScope

@@ -68,7 +68,7 @@ export default function RegisterPage() {
                         <BookOpen className="w-8 h-8 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-800">Create Account</h1>
-                    <p className="text-sm text-slate-500 mt-1">Join the AI Narrative Platform</p>
+                    <p className="text-sm text-slate-500 mt-1">Join Nusara</p>
                 </div>
 
                 {/* Form Card */}
