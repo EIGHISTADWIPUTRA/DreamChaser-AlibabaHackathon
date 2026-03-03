@@ -106,7 +106,33 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                <p className="text-center text-xs text-slate-400 mt-6">
+                {/* Demo Credentials */}
+                <div className="mt-4 bg-white/70 border border-orange-100 rounded-2xl p-4 space-y-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Demo Accounts</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => { setUsername("student"); setPassword("student"); }}
+                            className="bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-xl p-3 text-left transition-colors cursor-pointer"
+                        >
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-orange-400 mb-1">Student</p>
+                            <p className="text-xs text-slate-600 font-mono">user: <span className="font-bold">student</span></p>
+                            <p className="text-xs text-slate-600 font-mono">pass: <span className="font-bold">student</span></p>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setUsername("teacher"); setPassword("teacher"); }}
+                            className="bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl p-3 text-left transition-colors cursor-pointer"
+                        >
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-1">Teacher</p>
+                            <p className="text-xs text-slate-600 font-mono">user: <span className="font-bold">teacher</span></p>
+                            <p className="text-xs text-slate-600 font-mono">pass: <span className="font-bold">teacher</span></p>
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center">Click a card to auto-fill credentials</p>
+                </div>
+
+                <p className="text-center text-xs text-slate-400 mt-4">
                     Nusara
                 </p>
             </div>
