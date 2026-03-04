@@ -4,7 +4,7 @@ import { dashscopePost } from "./client";
 
 const WS_URL = "wss://dashscope-intl.aliyuncs.com/api-ws/v1/inference";
 const TTS_MODEL = process.env.DASHSCOPE_TTS_MODEL ?? "cosyvoice-v3-flash";
-const TTS_TIMEOUT = 60_000; // 60 seconds
+const TTS_TIMEOUT = 120_000; // 120 seconds (2 min)
 
 // Default voice mapping per model family
 const COSYVOICE_DEFAULT_VOICE = "longanyang";

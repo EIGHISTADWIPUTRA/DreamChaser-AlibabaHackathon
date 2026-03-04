@@ -40,7 +40,7 @@ export async function dashscopePost(
 
 export async function dashscopeGet(path: string): Promise<Response> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout
 
     const res = await fetch(`${BASE_URL}${path}`, {
         method: "GET",
