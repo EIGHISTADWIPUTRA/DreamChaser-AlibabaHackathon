@@ -82,9 +82,8 @@ export default function OnDemandVideoPlayer({
                 <img
                     src={imageUrl}
                     alt="Illustration"
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out ${
-                        isPlaying ? "opacity-0" : "opacity-100"
-                    }`}
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out ${isPlaying ? "opacity-0" : "opacity-100"
+                        }`}
                 />
 
                 {/* Play/Pause hover overlay */}
@@ -114,10 +113,10 @@ export default function OnDemandVideoPlayer({
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white">
                     <Loader2 className="w-10 h-10 animate-spin mb-3" />
                     <p className="text-sm font-medium animate-pulse">
-                        Casting animation spell...
+                        Processing Video...
                     </p>
                     <p className="text-xs text-white/60 mt-1">
-                        This may take a few minutes
+                        This may take 2–3 minutes. Please don&apos;t close this page.
                     </p>
                 </div>
             </div>

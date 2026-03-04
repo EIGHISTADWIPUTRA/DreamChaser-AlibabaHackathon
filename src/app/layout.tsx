@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
     title: "Nusara",
     description: "Nusara — Learn to write English Narrative Text with AI-powered guidance",
+    icons: {
+        icon: "/favicon.svg",
+        apple: "/favicon.svg",
+    },
 };
 
 export default function RootLayout({
