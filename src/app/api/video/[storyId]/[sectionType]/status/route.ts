@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { checkTask } from "@/lib/alibaba/client";
 import { submitVideoGeneration } from "@/lib/alibaba/video";
-import { extractImageUrl } from "@/lib/alibaba/image";
+import { submitImageGeneration, extractImageUrl } from "@/lib/alibaba/image";
 import { downloadAndSave } from "@/lib/utils/fileStorage";
 import { buildVideoAnimationPrompt } from "@/lib/pipeline/promptBuilder";
 
@@ -42,6 +42,16 @@ export async function GET(
         const jobId = section.videoJobId;
         if (!jobId) {
             return NextResponse.json({ status: "idle" });
+        }
+
+        // ── Phase 0: Queued — kick off image generation ────────────────────────
+        if (jobId === "queued") {
+            const imageTaskId = await submitImageGeneration(section.imagePromptBrief ?? "");
+            await prisma.section.update({
+                where: { id: section.id },
+                data: { videoJobId: `img:${imageTaskId}` },
+            });
+            return NextResponse.json({ status: "processing" });
         }
 
         // ── Phase 1: Waiting for image generation ──────────────────────────────

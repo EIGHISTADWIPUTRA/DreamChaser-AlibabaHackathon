@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
-import { submitImageGeneration } from "@/lib/alibaba/image";
 
 export async function POST(
     _request: NextRequest,
@@ -45,13 +44,11 @@ export async function POST(
             return NextResponse.json({ status: "processing" });
         }
 
-        // Submit the image re-generation to obtain a DashScope-hosted URL
-        // accessible by Wan2.1 I2V, then immediately return.
-        const imageTaskId = await submitImageGeneration(section.imagePromptBrief ?? "");
-
+        // Mark as queued — the status endpoint will drive all DashScope work.
+        // This keeps the generate endpoint instant (pure DB write, no network calls).
         await prisma.section.update({
             where: { id: section.id },
-            data: { videoJobId: `img:${imageTaskId}` },
+            data: { videoJobId: "queued" },
         });
 
         return NextResponse.json({ status: "processing" });
