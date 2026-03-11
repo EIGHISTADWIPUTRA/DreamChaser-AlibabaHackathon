@@ -8,7 +8,7 @@ import ImagePreview from "@/components/illustration/ImagePreview";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Check, AudioLines } from "lucide-react";
+import { Loader2, Check, AudioLines, ChevronLeft, ChevronRight } from "lucide-react";
 import type { SectionData, SectionType } from "@/types";
 import { ILLUSTRATION_ORDER, SECTION_ORDER } from "@/types";
 
@@ -39,6 +39,10 @@ export default function IllustrationPipeline({
         lockImage,
         setBrief,
         isComplete,
+        goToStep,
+        goToNextStep,
+        goToPrevStep,
+        hydrated,
     } = useIllustration(sections);
 
     useEffect(() => {
@@ -59,7 +63,7 @@ export default function IllustrationPipeline({
         (currentStep / ILLUSTRATION_ORDER.length) * 100
     );
 
-    if (loading) {
+    if (loading || !hydrated) {
         return (
             <div className="flex items-center justify-center h-64">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -128,7 +132,8 @@ export default function IllustrationPipeline({
                                             ? "secondary"
                                             : "outline"
                                 }
-                                className="text-[10px] flex-1 justify-center"
+                                className="text-[10px] flex-1 justify-center cursor-pointer"
+                                onClick={() => goToStep(i)}
                             >
                                 {isDone ? "✓ " : ""}
                                 {label}
@@ -188,7 +193,51 @@ export default function IllustrationPipeline({
                 )}
 
                 {error && (
-                    <p className="text-sm text-destructive mt-3">{error}</p>
+                    <div className="mt-3 p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm text-destructive">{error}</p>
+                        {error.includes("muat ulang") && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => window.location.reload()}
+                            >
+                                Muat Ulang Halaman
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Navigation buttons */}
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="outline"
+                    onClick={goToPrevStep}
+                    disabled={currentStep === 0}
+                    className="gap-2"
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                </Button>
+
+                {currentStep === ILLUSTRATION_ORDER.length - 1 ? (
+                    <Button
+                        onClick={() => router.push(`/finalize/${storyId}`)}
+                        className="gap-2"
+                    >
+                        <AudioLines className="w-4 h-4" />
+                        Finish & Continue
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={goToNextStep}
+                        disabled={currentStep >= ILLUSTRATION_ORDER.length - 1}
+                        className="gap-2"
+                    >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                    </Button>
                 )}
             </div>
         </div>

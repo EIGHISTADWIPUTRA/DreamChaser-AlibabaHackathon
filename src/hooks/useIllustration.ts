@@ -1,8 +1,23 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { SectionData, SectionType } from "@/types";
 import { ILLUSTRATION_ORDER } from "@/types";
+
+const RELOAD_MESSAGE =
+    "Sistem baru saja diperbarui. Silakan muat ulang (refresh) halaman ini untuk melanjutkan.";
+
+function isDeployMismatchError(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : String(err);
+    return (
+        msg.includes("Failed to find Server Action") ||
+        msg.includes("older or newer deployment")
+    );
+}
+
+function isServerError(status: number): boolean {
+    return status === 500 || status === 502 || status === 504;
+}
 
 interface UseIllustrationReturn {
     currentStep: number;
@@ -20,6 +35,28 @@ interface UseIllustrationReturn {
     setBrief: (brief: string) => void;
     isComplete: boolean;
     goToStep: (step: number) => void;
+    goToNextStep: () => void;
+    goToPrevStep: () => void;
+    hydrated: boolean;
+}
+
+function hydrateStep(step: number, sections: SectionData[]) {
+    if (step >= ILLUSTRATION_ORDER.length) return { brief: "", imageUrl: null };
+    const type = ILLUSTRATION_ORDER[step];
+    const section = sections.find((s) => s.sectionType === type);
+    return {
+        brief: section?.imagePromptBrief ?? "",
+        imageUrl: section?.imageUrl ?? null,
+    };
+}
+
+function findInitialStep(sections: SectionData[]): number {
+    for (let i = 0; i < ILLUSTRATION_ORDER.length; i++) {
+        const type = ILLUSTRATION_ORDER[i];
+        const section = sections.find((s) => s.sectionType === type);
+        if (!section?.isIllustrated) return i;
+    }
+    return ILLUSTRATION_ORDER.length; // all done
 }
 
 export function useIllustration(
@@ -32,6 +69,20 @@ export function useIllustration(
     const [imageLoading, setImageLoading] = useState(false);
     const [lockLoading, setLockLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hydrated, setHydrated] = useState(false);
+    const didHydrate = useRef(false);
+
+    // Hydrate state from sections on first load
+    useEffect(() => {
+        if (didHydrate.current || sections.length === 0) return;
+        didHydrate.current = true;
+        const step = findInitialStep(sections);
+        setCurrentStep(step);
+        const data = hydrateStep(step, sections);
+        setBrief(data.brief);
+        setImageUrl(data.imageUrl);
+        setHydrated(true);
+    }, [sections]);
 
     const currentSectionType = ILLUSTRATION_ORDER[currentStep];
     const isComplete = currentStep >= ILLUSTRATION_ORDER.length;
@@ -45,11 +96,21 @@ export function useIllustration(
                     `/api/illustration/${storyId}/${currentSectionType}/brief`,
                     { method: "POST" }
                 );
-                if (!res.ok) throw new Error("Failed to generate brief");
+                if (!res.ok) {
+                    if (isServerError(res.status)) {
+                        const body = await res.json().catch(() => ({}));
+                        throw new Error(body.error || "Server error");
+                    }
+                    throw new Error("Failed to generate brief");
+                }
                 const data = await res.json();
                 setBrief(data.brief);
             } catch (err) {
-                setError((err as Error).message);
+                if (isDeployMismatchError(err)) {
+                    setError(RELOAD_MESSAGE);
+                } else {
+                    setError((err as Error).message);
+                }
             } finally {
                 setBriefLoading(false);
             }
@@ -73,11 +134,21 @@ export function useIllustration(
                         }),
                     }
                 );
-                if (!res.ok) throw new Error("Failed to revise brief");
+                if (!res.ok) {
+                    if (isServerError(res.status)) {
+                        const body = await res.json().catch(() => ({}));
+                        throw new Error(body.error || "Server error");
+                    }
+                    throw new Error("Failed to revise brief");
+                }
                 const data = await res.json();
                 setBrief(data.brief);
             } catch (err) {
-                setError((err as Error).message);
+                if (isDeployMismatchError(err)) {
+                    setError(RELOAD_MESSAGE);
+                } else {
+                    setError((err as Error).message);
+                }
             } finally {
                 setBriefLoading(false);
             }
@@ -105,7 +176,11 @@ export function useIllustration(
                 const data = await res.json();
                 setImageUrl(data.imageUrl);
             } catch (err) {
-                setError((err as Error).message);
+                if (isDeployMismatchError(err)) {
+                    setError(RELOAD_MESSAGE);
+                } else {
+                    setError((err as Error).message);
+                }
             } finally {
                 setImageLoading(false);
             }
@@ -156,12 +231,25 @@ export function useIllustration(
         [currentSectionType, currentStep, sections]
     );
 
-    const goToStep = useCallback((step: number) => {
-        setCurrentStep(step);
-        setBrief("");
-        setImageUrl(null);
-        setError(null);
-    }, []);
+    const goToStep = useCallback(
+        (step: number) => {
+            if (step < 0 || step > ILLUSTRATION_ORDER.length) return;
+            setCurrentStep(step);
+            setError(null);
+            const data = hydrateStep(step, sections);
+            setBrief(data.brief);
+            setImageUrl(data.imageUrl);
+        },
+        [sections]
+    );
+
+    const goToNextStep = useCallback(() => {
+        goToStep(currentStep + 1);
+    }, [currentStep, goToStep]);
+
+    const goToPrevStep = useCallback(() => {
+        goToStep(currentStep - 1);
+    }, [currentStep, goToStep]);
 
     return {
         currentStep,
@@ -179,5 +267,8 @@ export function useIllustration(
         setBrief,
         isComplete,
         goToStep,
+        goToNextStep,
+        goToPrevStep,
+        hydrated,
     };
 }

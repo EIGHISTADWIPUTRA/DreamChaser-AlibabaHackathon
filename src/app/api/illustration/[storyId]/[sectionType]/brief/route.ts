@@ -8,6 +8,8 @@ import {
 } from "@/lib/pipeline/promptBuilder";
 import type { SectionType } from "@/types";
 
+export const maxDuration = 60;
+
 export async function POST(
     _request: NextRequest,
     { params }: { params: Promise<{ storyId: string; sectionType: string }> }
@@ -84,11 +86,13 @@ export async function POST(
         });
 
         return NextResponse.json({ brief });
-    } catch (error) {
-        console.error("Brief generation error:", error);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        const isTimeout = message.includes("aborted") || message.includes("timeout");
+        console.error("Brief generation error:", message);
         return NextResponse.json(
-            { error: "Failed to generate brief" },
-            { status: 500 }
+            { error: isTimeout ? "LLM request timed out. Please try again." : "Failed to generate brief" },
+            { status: isTimeout ? 504 : 500 }
         );
     }
 }
