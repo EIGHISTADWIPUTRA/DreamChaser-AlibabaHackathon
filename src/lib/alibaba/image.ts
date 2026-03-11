@@ -94,3 +94,18 @@ export async function waitForImage(taskId: string): Promise<string> {
     }
     return imageUrl as string;
 }
+
+/**
+ * Extract the image URL from a SUCCEEDED task result without throwing.
+ * Returns null if no URL can be found.
+ */
+export function extractImageUrl(result: Record<string, unknown>): string | null {
+    if (isWan2_6Plus) {
+        type ContentItem = { type: string; image?: string };
+        type Choice = { message: { content: ContentItem[] } };
+        const content = (result.choices as Choice[])?.[0]?.message?.content;
+        return content?.find((c) => c.type === "image")?.image ?? null;
+    }
+    type ImageResult = { url: string };
+    return (result.results as ImageResult[])?.[0]?.url ?? null;
+}

@@ -58,6 +58,7 @@ model Section {
   imagePromptBrief String?  @map("image_prompt_brief")
   imageUrl         String?  @map("image_url")
   videoUrl         String?  @map("video_url")
+  videoJobId       String?  @map("video_job_id")
   audioUrl         String?  @map("audio_url")
   isIllustrated    Boolean  @default(false) @map("is_illustrated")
   sortOrder        Int      @map("sort_order")

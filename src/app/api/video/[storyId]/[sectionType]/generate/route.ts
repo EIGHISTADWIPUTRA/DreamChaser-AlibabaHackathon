@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
-import { submitVideoGeneration, waitForVideo } from "@/lib/alibaba/video";
-import { submitImageGeneration, waitForImage } from "@/lib/alibaba/image";
-import { downloadAndSave } from "@/lib/utils/fileStorage";
-import { buildVideoAnimationPrompt } from "@/lib/pipeline/promptBuilder";
-
-export const maxDuration = 600;
+import { submitImageGeneration } from "@/lib/alibaba/image";
 
 export async function POST(
     _request: NextRequest,
@@ -40,41 +35,30 @@ export async function POST(
             );
         }
 
-        // Already has video?
+        // Already completed
         if (section.videoUrl) {
-            return NextResponse.json({ videoUrl: section.videoUrl });
+            return NextResponse.json({ status: "completed", videoUrl: section.videoUrl });
         }
 
-        // Build style-aware cinematic motion prompt using the persisted art style
-        const videoPrompt = buildVideoAnimationPrompt(sectionType, story.artStyle ?? "storybook");
+        // Already a job in progress — do not start a second one
+        if (section.videoJobId) {
+            return NextResponse.json({ status: "processing" });
+        }
 
-        // Re-generate image to get a DashScope-hosted URL accessible by Wan2.1 I2V
+        // Submit the image re-generation to obtain a DashScope-hosted URL
+        // accessible by Wan2.1 I2V, then immediately return.
         const imageTaskId = await submitImageGeneration(section.imagePromptBrief ?? "");
-        const remoteImageUrl = await waitForImage(imageTaskId);
 
-        // Submit video generation
-        const videoTaskId = await submitVideoGeneration(remoteImageUrl, videoPrompt);
-        const remoteVideoUrl = await waitForVideo(videoTaskId);
-
-        // Download video locally
-        const filename = `story-${storyIdNum}-${sectionType}.mp4`;
-        const localVideoUrl = await downloadAndSave(
-            remoteVideoUrl,
-            "videos",
-            filename
-        );
-
-        // Save to DB
         await prisma.section.update({
             where: { id: section.id },
-            data: { videoUrl: localVideoUrl },
+            data: { videoJobId: `img:${imageTaskId}` },
         });
 
-        return NextResponse.json({ videoUrl: localVideoUrl });
+        return NextResponse.json({ status: "processing" });
     } catch (error) {
-        console.error("On-demand video error:", error);
+        console.error("Video generation start error:", error);
         return NextResponse.json(
-            { error: "Failed to generate video: " + (error as Error).message },
+            { error: "Failed to start video generation: " + (error as Error).message },
             { status: 500 }
         );
     }

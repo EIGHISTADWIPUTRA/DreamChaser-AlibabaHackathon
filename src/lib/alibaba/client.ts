@@ -60,6 +60,18 @@ interface TaskResult {
     [key: string]: any;
 }
 
+/**
+ * Check a task's current status once without polling.
+ */
+export async function checkTask(taskId: string): Promise<TaskResult> {
+    const res = await dashscopeGet(`/api/v1/tasks/${taskId}`);
+    if (!res.ok) {
+        throw new Error(`Check task failed: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    return json.output as TaskResult;
+}
+
 export async function pollTask(
     taskId: string,
     intervalMs = 3000,

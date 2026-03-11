@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { Loader2, Sparkles, Play, Pause } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Loader2, Sparkles, Play, Pause, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+type JobStatus = "idle" | "processing" | "completed" | "failed";
 
 interface OnDemandVideoPlayerProps {
     storyId: number;
@@ -18,35 +20,100 @@ export default function OnDemandVideoPlayer({
     videoUrl: initialVideoUrl,
 }: OnDemandVideoPlayerProps) {
     const [videoUrl, setVideoUrl] = useState<string | null>(initialVideoUrl);
-    const [generating, setGenerating] = useState(false);
+    const [status, setStatus] = useState<JobStatus>(initialVideoUrl ? "completed" : "idle");
     const [isPlaying, setIsPlaying] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const handleGenerate = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent page flip
-        setGenerating(true);
-        setError(null);
-        try {
-            const res = await fetch(
-                `/api/video/${storyId}/${sectionType}/generate`,
-                { method: "POST" }
-            );
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || "Failed to generate video");
-            }
-            const data = await res.json();
-            setVideoUrl(data.videoUrl);
-        } catch (err) {
-            setError((err as Error).message);
-        } finally {
-            setGenerating(false);
+    const stopPolling = useCallback(() => {
+        if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
         }
-    }, [storyId, sectionType]);
+    }, []);
+
+    // Clean up interval on unmount
+    useEffect(() => () => stopPolling(), [stopPolling]);
+
+    const checkStatus = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/video/${storyId}/${sectionType}/status`);
+            if (!res.ok) return; // transient error — keep polling
+            const data: { status: JobStatus; videoUrl?: string; error?: string } =
+                await res.json();
+
+            if (data.status === "completed" && data.videoUrl) {
+                setVideoUrl(data.videoUrl);
+                setStatus("completed");
+                stopPolling();
+            } else if (data.status === "failed") {
+                setError(data.error ?? "Video generation failed. Please try again.");
+                setStatus("failed");
+                stopPolling();
+            }
+            // "processing" / "idle" → keep polling
+        } catch {
+            // ignore transient network errors; keep polling
+        }
+    }, [storyId, sectionType, stopPolling]);
+
+    const startPolling = useCallback(() => {
+        stopPolling();
+        pollingRef.current = setInterval(checkStatus, 7000);
+    }, [checkStatus, stopPolling]);
+
+    // On mount, resume polling if a job was already in progress (e.g. after page refresh)
+    useEffect(() => {
+        if (initialVideoUrl) return;
+        fetch(`/api/video/${storyId}/${sectionType}/status`)
+            .then((r) => r.json())
+            .then((data: { status: JobStatus; videoUrl?: string }) => {
+                if (data.status === "processing") {
+                    setStatus("processing");
+                    startPolling();
+                } else if (data.status === "completed" && data.videoUrl) {
+                    setVideoUrl(data.videoUrl);
+                    setStatus("completed");
+                }
+            })
+            .catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleGenerate = useCallback(
+        async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            setError(null);
+            setStatus("processing");
+            try {
+                const res = await fetch(
+                    `/api/video/${storyId}/${sectionType}/generate`,
+                    { method: "POST" }
+                );
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error ?? "Failed to start video generation");
+                }
+                const data: { status: JobStatus; videoUrl?: string } = await res.json();
+                if (data.status === "completed" && data.videoUrl) {
+                    // Rare: was already generated
+                    setVideoUrl(data.videoUrl);
+                    setStatus("completed");
+                    return;
+                }
+                // Start polling for progress
+                startPolling();
+            } catch (err) {
+                setError((err as Error).message);
+                setStatus("failed");
+            }
+        },
+        [storyId, sectionType, startPolling]
+    );
 
     const togglePlay = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent page flip
+        e.stopPropagation();
         if (!videoRef.current) return;
         if (isPlaying) {
             videoRef.current.pause();
@@ -65,11 +132,10 @@ export default function OnDemandVideoPlayer({
         }
     };
 
-    // State 3: Video exists — layered image + video with crossfade
-    if (videoUrl) {
+    // ── State: completed — layered image + video with crossfade ──────────────
+    if (status === "completed" && videoUrl) {
         return (
             <div className="relative w-full h-full bg-black overflow-hidden group">
-                {/* Video layer (always mounted, behind the image) */}
                 <video
                     ref={videoRef}
                     src={videoUrl}
@@ -77,16 +143,13 @@ export default function OnDemandVideoPlayer({
                     playsInline
                     onEnded={handleVideoEnded}
                 />
-
-                {/* Image layer — crossfades over the video */}
                 <img
                     src={imageUrl}
                     alt="Illustration"
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out ${isPlaying ? "opacity-0" : "opacity-100"
-                        }`}
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out ${
+                        isPlaying ? "opacity-0" : "opacity-100"
+                    }`}
                 />
-
-                {/* Play/Pause hover overlay */}
                 <button
                     onClick={togglePlay}
                     className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -101,8 +164,8 @@ export default function OnDemandVideoPlayer({
         );
     }
 
-    // State 2: Generating
-    if (generating) {
+    // ── State: processing ─────────────────────────────────────────────────────
+    if (status === "processing") {
         return (
             <div className="relative w-full h-full overflow-hidden">
                 <img
@@ -112,18 +175,16 @@ export default function OnDemandVideoPlayer({
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white">
                     <Loader2 className="w-10 h-10 animate-spin mb-3" />
-                    <p className="text-sm font-medium animate-pulse">
-                        Processing Video...
-                    </p>
+                    <p className="text-sm font-medium animate-pulse">Generating Video…</p>
                     <p className="text-xs text-white/60 mt-1">
-                        This may take 2–3 minutes. Please don&apos;t close this page.
+                        This can take 2–4 minutes. You can safely navigate away and come back.
                     </p>
                 </div>
             </div>
         );
     }
 
-    // State 1: Static image + generate button
+    // ── State: idle / failed — static image + generate button ─────────────────
     return (
         <div className="relative w-full h-full overflow-hidden group">
             <img
@@ -138,15 +199,17 @@ export default function OnDemandVideoPlayer({
                     className="opacity-0 group-hover:opacity-100 transition-opacity gap-2 rounded-xl shadow-xl bg-white/90 text-slate-800 hover:bg-white"
                 >
                     <Sparkles className="w-4 h-4 text-orange-500" />
-                    Animate this page (AI Video)
+                    {status === "failed" ? "Retry AI Video" : "Animate this page (AI Video)"}
                 </Button>
             </div>
 
-            {error && (
-                <div className="absolute bottom-2 left-2 right-2 bg-red-500/90 text-white text-xs p-2 rounded-lg">
-                    {error}
+            {status === "failed" && error && (
+                <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 bg-red-600/90 text-white text-xs p-2 rounded-lg">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{error}</span>
                 </div>
             )}
         </div>
     );
 }
+

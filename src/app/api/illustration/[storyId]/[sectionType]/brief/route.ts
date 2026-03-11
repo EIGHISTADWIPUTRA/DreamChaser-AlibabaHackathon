@@ -8,7 +8,7 @@ import {
 } from "@/lib/pipeline/promptBuilder";
 import type { SectionType } from "@/types";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(
     _request: NextRequest,
